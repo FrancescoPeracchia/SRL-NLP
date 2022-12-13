@@ -17,7 +17,7 @@ class Arg_Classifier(torch.nn.Module):
         #pos embedding
         self.pos_embedding_input_dim = cfg.embeddings.pos_embedding_input_dim
         self.pos_embedding_output_dim = cfg.embeddings.pos_embedding_output_dim
-
+      
 
 
         #bi-lstm
@@ -33,6 +33,9 @@ class Arg_Classifier(torch.nn.Module):
 
 
         self.bert_output_dim = 768
+
+
+       
 
 
 
@@ -56,7 +59,7 @@ class Arg_Classifier(torch.nn.Module):
             self.linear0_dim = self.bilstm_output_dim*2+self.bilstm_output_dim*2
 
         self.linear1_dim = 100
-        self.output_classes = 27
+        self.output_classes = cfg.n_classes
         
         
 
@@ -79,10 +82,10 @@ class Arg_Classifier(torch.nn.Module):
     def forward(self, subwords_embeddings :torch.tensor, perdicate_positional_encoding : torch.tensor, predicate_index:list, pos_index_encoding:torch.tensor):
         
         #-------------------Emdedding and recombining----------------------------- 
-        perdicate_positional_encoding.cuda()
+        perdicate_positional_encoding = perdicate_positional_encoding
         flag_embedding = self.embedding_predicate(perdicate_positional_encoding)
         b,n,h = flag_embedding.size()
-        subwords_embeddings = subwords_embeddings[:,:n,:].cuda()
+        subwords_embeddings = subwords_embeddings[:,:n,:]
         
         if self.pos_embedding_output_dim :
             #embedd pos
@@ -138,11 +141,12 @@ class Arg_Classifier(torch.nn.Module):
             
 
 
-        b,n,h = output_bilstm.size()
+        b,n,h = x.size()
+        
 
 
         #-------------------Classifier----------------------------- 
-        x = output_bilstm.reshape(b*n,h)
+        x = x.reshape(b*n,h)
         x = self.linear0(x)
         x = self.Relu(x)
         x = self.dropout_in_classifier(x)
