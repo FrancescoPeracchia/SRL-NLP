@@ -6,29 +6,36 @@ class Arg_Classifier(torch.nn.Module):
 
     def __init__(self,language: str, cfg: dict):
         super(Arg_Classifier, self).__init__()
+
+
+
+
+
         self.language = language
+
+        
 
         #it could be only 0 or 1
         #predicate embedding
         self.predicate_flag_embedding_input_dim = 2
-        self.predicate_flag_embedding_output_dim = cfg.embeddings.predicate_flag_embedding_output_dim
+        self.predicate_flag_embedding_output_dim = cfg["embeddings"]["predicate_flag_embedding_output_dim"]
         
 
         #pos embedding
-        self.pos_embedding_input_dim = cfg.embeddings.pos_embedding_input_dim
-        self.pos_embedding_output_dim = cfg.embeddings.pos_embedding_output_dim
+        self.pos_embedding_input_dim = cfg["embeddings"]["pos_embedding_input_dim"]
+        self.pos_embedding_output_dim = cfg["embeddings"]["pos_embedding_output_dim"]
       
 
 
         #bi-lstm
-        self.bilstm_n_layers = cfg.bilstm.n_layers
-        self.bilstm_output_dim = cfg.bilstm.output_dim
+        self.bilstm_n_layers = cfg["bilstm"]["n_layers"]
+        self.bilstm_output_dim = cfg["bilstm"]["output_dim"]
 
 
-        self.language_portable = cfg.language_portable
+        self.language_portable = cfg["language_portable"]
 
         #list position 0: pre-classifier branch A , 1: in-classifier 2: pre-classifier branch B 
-        self.dropouts = cfg.dropouts
+        self.dropouts = cfg["dropouts"]
 
 
 
@@ -51,7 +58,7 @@ class Arg_Classifier(torch.nn.Module):
 
             self.bi_lstm_portable_input_dim = self.pos_embedding_output_dim + self.predicate_flag_embedding_output_dim
             self.bi_lstm_portable = torch.nn.LSTM(self.bi_lstm_portable_input_dim, self.bilstm_output_dim,self.bilstm_n_layers,dropout = 0.2,batch_first=True, bidirectional = True)
-            self.dropout_pre_B = torch.nn.Dropout(p=self.dropouts[2])
+            #self.dropout_pre_B = torch.nn.Dropout(p=self.dropouts[2])
             #bi-directional ---> *2  Token hidden state,predicate hidden state, Token hidden state structurale inter-language information
             self.linear0_dim = self.bilstm_output_dim*2+self.bilstm_output_dim*2+self.bilstm_output_dim*2
         else :
@@ -59,7 +66,7 @@ class Arg_Classifier(torch.nn.Module):
             self.linear0_dim = self.bilstm_output_dim*2+self.bilstm_output_dim*2
 
         self.linear1_dim = 100
-        self.output_classes = cfg.n_classes
+        self.output_classes = cfg["n_classes"]
         
         
 
@@ -67,7 +74,7 @@ class Arg_Classifier(torch.nn.Module):
         self.embedding_pos = torch.nn.Embedding(self.pos_embedding_input_dim, self.pos_embedding_output_dim, max_norm=True)
 
         self.bi_lstm = torch.nn.LSTM(self.bilstm_input_dim, self.bilstm_output_dim,self.bilstm_n_layers,dropout = 0.2,batch_first=True, bidirectional = True)
-        self.dropout_pre_A = torch.nn.Dropout(p=self.dropouts[1])
+        #self.dropout_pre_A = torch.nn.Dropout(p=self.dropouts[1])
 
 
 
@@ -87,7 +94,7 @@ class Arg_Classifier(torch.nn.Module):
         b,n,h = flag_embedding.size()
         subwords_embeddings = subwords_embeddings[:,:n,:]
         
-        if self.pos_embedding_output_dim :
+        if self.pos_embedding_output_dim  :
             #embedd pos
             pos_embedding = self.embedding_pos(pos_index_encoding)
             input_bilstm = torch.cat((subwords_embeddings,flag_embedding,pos_embedding),2)
@@ -98,6 +105,7 @@ class Arg_Classifier(torch.nn.Module):
 
         #-------------------Bi-LSTM Structurale information----------------------------- 
         if self.language_portable and self.pos_embedding_output_dim:
+            pos_embedding = self.embedding_pos(pos_index_encoding)
             
             #embedd all strucural informations that are similar to different language
             input_bilstm_language_portable = torch.cat((pos_embedding,flag_embedding),2)
@@ -125,11 +133,12 @@ class Arg_Classifier(torch.nn.Module):
 
 
 
-        output_bilstm = self.dropout_pre_A(output_bilstm)
+        #output_bilstm = self.dropout_pre_A(output_bilstm)
 
 
         if self.language_portable and self.pos_embedding_output_dim:
-            output_bilstm_portable = self.dropout_pre_B(output_bilstm_portable)
+            #output_bilstm_portable = self.dropout_pre_B(output_bilstm_portable)
+            output_bilstm_portable = output_bilstm_portable[:,1:-1,:]
             x = torch.cat((output_bilstm,output_bilstm_portable,predicate_embedding),2)
         else :
             x = torch.cat((output_bilstm,predicate_embedding),2)
