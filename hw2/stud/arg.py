@@ -20,11 +20,14 @@ class Arg_Classifier(torch.nn.Module):
         self.predicate_flag_embedding_input_dim = 2
         self.predicate_flag_embedding_output_dim = cfg["embeddings"]["predicate_flag_embedding_output_dim"]
         
-
         #pos embedding
         self.pos_embedding_input_dim = cfg["embeddings"]["pos_embedding_input_dim"]
         self.pos_embedding_output_dim = cfg["embeddings"]["pos_embedding_output_dim"]
-      
+        
+        #predicate embedding
+        self.predicate_embedding_input_dim = cfg["embeddings"]["predicate_embedding_input_dim"]
+        self.predicate_embedding_output_dim = cfg["embeddings"]["predicate_embedding_output_dim"]
+
 
 
         #bi-lstm
@@ -48,10 +51,18 @@ class Arg_Classifier(torch.nn.Module):
 
 
         #predicate flag embedding is determinant while pos embedding could be added or not
+
+        self.bilstm_input_dim = self.bert_output_dim + self.predicate_flag_embedding_output_dim
+
         if self.pos_embedding_output_dim :
-            self.bilstm_input_dim = self.bert_output_dim + self.pos_embedding_output_dim + self.predicate_flag_embedding_output_dim
+            self.bilstm_input_dim = self.bilstm_input_dim + self.pos_embedding_output_dim
         else : 
-            self.bilstm_input_dim = self.bert_output_dim + self.predicate_flag_embedding_output_dim
+            self.bilstm_input_dim = self.bilstm_input_dim
+        
+        if self.predicate_embedding_output_dim :
+            self.bilstm_input_dim = self.bilstm_input_dim + self.predicate_embedding_output_dim
+        else : 
+            self.bilstm_input_dim = self.bilstm_input_dim
         
 
         if self.language_portable and self.pos_embedding_output_dim:
@@ -65,12 +76,14 @@ class Arg_Classifier(torch.nn.Module):
             #bi-directional ---> *2  Token hidden state,predicate hidden state
             self.linear0_dim = self.bilstm_output_dim*2+self.bilstm_output_dim*2
 
-        self.linear1_dim = 100
+        self.linear1_dim = cfg["n_classes"]*25
+        self.linear2_dim = cfg["n_classes"]*5
         self.output_classes = cfg["n_classes"]
         
         
 
-        self.embedding_predicate = torch.nn.Embedding(self.predicate_flag_embedding_input_dim, self.predicate_flag_embedding_output_dim, max_norm=True)
+        self.embedding_predicate_flag = torch.nn.Embedding(self.predicate_flag_embedding_input_dim, self.predicate_flag_embedding_output_dim, max_norm=True)
+        self.embedding_predicate = torch.nn.Embedding(self.predicate_embedding_input_dim, self.predicate_embedding_output_dim, max_norm=True)
         self.embedding_pos = torch.nn.Embedding(self.pos_embedding_input_dim, self.pos_embedding_output_dim, max_norm=True)
 
         self.bi_lstm = torch.nn.LSTM(self.bilstm_input_dim, self.bilstm_output_dim,self.bilstm_n_layers,dropout = 0.2,batch_first=True, bidirectional = True)
@@ -82,30 +95,38 @@ class Arg_Classifier(torch.nn.Module):
         self.Relu = torch.nn.ReLU()
         self.Sigmoid  = torch.nn.Sigmoid()
         self.linear0 = torch.nn.Linear(self.linear0_dim, self.linear1_dim)
-        self.linear1 = torch.nn.Linear(self.linear1_dim, self.output_classes)
+        self.linear1 = torch.nn.Linear(self.linear1_dim, self.linear2_dim)
+        self.linear2 = torch.nn.Linear(self.linear2_dim, self.output_classes)
 
         
 
-    def forward(self, subwords_embeddings :torch.tensor, perdicate_positional_encoding : torch.tensor, predicate_index:list, pos_index_encoding:torch.tensor):
+    def forward(self, subwords_embeddings :torch.tensor, perdicate_positional_encoding : torch.tensor, predicate_index:list, pos_index_encoding:torch.tensor, predicate_meaning_encoding:torch.tensor):
         
         #-------------------Emdedding and recombining----------------------------- 
-        perdicate_positional_encoding = perdicate_positional_encoding
-        flag_embedding = self.embedding_predicate(perdicate_positional_encoding)
+        flag_embedding = self.embedding_predicate_flag(perdicate_positional_encoding)
         b,n,h = flag_embedding.size()
         subwords_embeddings = subwords_embeddings[:,:n,:]
+
+
+        input_bilstm = torch.cat((subwords_embeddings,flag_embedding),2)
         
         if self.pos_embedding_output_dim  :
             #embedd pos
             pos_embedding = self.embedding_pos(pos_index_encoding)
-            input_bilstm = torch.cat((subwords_embeddings,flag_embedding,pos_embedding),2)
+            input_bilstm = torch.cat((input_bilstm,pos_embedding),2)
         
-        else :
-            input_bilstm = torch.cat((subwords_embeddings,flag_embedding),2)
+        
+        if self.predicate_embedding_output_dim :
+            #embedd disambiguate predicate
+            predicate_meaning_embedding = self.embedding_predicate(predicate_meaning_encoding)
+            input_bilstm = torch.cat((input_bilstm,predicate_meaning_embedding),2)
+
+
 
 
         #-------------------Bi-LSTM Structurale information----------------------------- 
         if self.language_portable and self.pos_embedding_output_dim:
-            pos_embedding = self.embedding_pos(pos_index_encoding)
+            predicate__embedding = self.embedding_pos(pos_index_encoding)
             
             #embedd all strucural informations that are similar to different language
             input_bilstm_language_portable = torch.cat((pos_embedding,flag_embedding),2)
@@ -156,10 +177,14 @@ class Arg_Classifier(torch.nn.Module):
 
         #-------------------Classifier----------------------------- 
         x = x.reshape(b*n,h)
+        #x = self.dropout_in_classifier(x)
         x = self.linear0(x)
         x = self.Relu(x)
         x = self.dropout_in_classifier(x)
         x = self.linear1(x)
+        x = self.Relu(x)
+        x = self.dropout_in_classifier(x)
+        x = self.linear2(x)
 
         return x
 
