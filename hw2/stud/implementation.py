@@ -132,7 +132,7 @@ class Baseline(Model):
         return baselines
 
 
-class StudentModel(Model):
+class Task(Model):
 
     # STUDENT: construct here your model
     # this class should be loading your weights and vocabulary

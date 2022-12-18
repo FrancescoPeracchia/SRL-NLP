@@ -26,7 +26,6 @@ def read_dataset(path: str):
 
     return sentences, labels
 
-
 def evaluate_predicate_identification(labels, predictions, null_tag="_"):
     true_positives, false_positives, false_negatives = 0, 0, 0
     for sentence_id in labels:
@@ -50,7 +49,6 @@ def evaluate_predicate_identification(labels, predictions, null_tag="_"):
         "recall": recall,
         "f1": f1,
     }
-
 
 def evaluate_predicate_disambiguation(labels, predictions, null_tag="_"):
     true_positives, false_positives, false_negatives = 0, 0, 0
@@ -79,7 +77,6 @@ def evaluate_predicate_disambiguation(labels, predictions, null_tag="_"):
         "recall": recall,
         "f1": f1,
     }
-
 
 def evaluate_argument_identification(labels, predictions, null_tag="_"):
     true_positives, false_positives, false_negatives = 0, 0, 0
@@ -112,7 +109,6 @@ def evaluate_argument_identification(labels, predictions, null_tag="_"):
         "recall": recall,
         "f1": f1,
     }
-
 
 def evaluate_argument_classification(labels, predictions, null_tag="_"):
     true_positives, false_positives, false_negatives = 0, 0, 0
@@ -151,7 +147,6 @@ def evaluate_argument_classification(labels, predictions, null_tag="_"):
         "f1": f1,
     }
 
-
 def _get_table_line(a, b, c):
     if isinstance(b, float):
         b = "{:0.2f}".format(b)
@@ -160,7 +155,6 @@ def _get_table_line(a, b, c):
 
     line = "{:^20}|{:^20}|{:^20}".format(a, b, c)
     return line
-
 
 def print_table(title, results):
     header = _get_table_line("", "Gold Positive", "Gold Negative")
