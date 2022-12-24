@@ -153,3 +153,7 @@ static
 .idea
 *.iml
 data-secret
+
+
+*.pth 
+*.json
