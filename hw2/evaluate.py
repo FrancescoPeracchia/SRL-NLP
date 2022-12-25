@@ -29,7 +29,7 @@ def main(test_path: str, endpoint: str, language: str):
         logging.error(e, exc_info=True)
         exit(1)
 
-    max_try = 2
+    max_try = 10
     iterator = iter(range(max_try))
 
     while True:
@@ -79,17 +79,14 @@ def main(test_path: str, endpoint: str, language: str):
 
     for sentence_id in track(sentences, description="Evaluating"):
         sentence = sentences[sentence_id]
-        print("sentence",sentence)
         try:
             response = requests.post(
                 endpoint, json={"data": sentence, "language": language}
             ).json()
             predictions_34[sentence_id] = response["predictions_34"]
-            print("Before",predictions_34[sentence_id])
             predictions_34[sentence_id]["roles"] = {
                 int(i): p for i, p in predictions_34[sentence_id]["roles"].items()
             }
-            print("After",predictions_34[sentence_id]["roles"])
             if response["predictions_234"]:
                 predictions_234[sentence_id] = response["predictions_234"]
                 predictions_234[sentence_id]["roles"] = {

@@ -4,9 +4,16 @@ import torch
 
 class Arg_Classifier(torch.nn.Module):
 
-    def __init__(self, cfg: dict):
+    def __init__(self,language: str, cfg: dict):
         super(Arg_Classifier, self).__init__()
 
+
+
+
+
+        self.language = language
+
+        
 
         #it could be only 0 or 1
         #predicate embedding

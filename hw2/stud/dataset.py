@@ -18,7 +18,7 @@ class SRL(Dataset):
         self.load_data(language,path)
         if args_roles is None :
             self.args_roles,self.list_broken_id = self.list_arg_roles()
-            self.predicate_dis.append("UNK")
+            self.args_roles.append("UNK")
         else : 
             self.args_roles = args_roles
             _,self.list_broken_id = self.list_arg_roles()

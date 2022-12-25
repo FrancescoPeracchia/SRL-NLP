@@ -9,7 +9,6 @@ import torch.nn as nn
 import torch
 from .dataset import SRL
 from .arg import Arg_Classifier
-import os
 
 def build_model_34(language: str, device: str) -> Model:
     """
@@ -23,6 +22,7 @@ def build_model_34(language: str, device: str) -> Model:
             4: Argument classification.
     """
     return Task34(language=language)
+
 
 def build_model_234(language: str, device: str) -> Model:
     """
@@ -38,6 +38,7 @@ def build_model_234(language: str, device: str) -> Model:
     """
     raise NotImplementedError
 
+
 def build_model_1234(language: str, device: str) -> Model:
     """
     The implementation of this function is OPTIONAL.
@@ -52,6 +53,7 @@ def build_model_1234(language: str, device: str) -> Model:
             4: Argument classification.
     """
     raise NotImplementedError
+
 
 class Baseline(Model):
     """
@@ -131,6 +133,7 @@ class Baseline(Model):
             baselines = json.load(baselines_file)
         return baselines
 
+
 class Task34(Model):
 
     # STUDENT: construct here your model
@@ -140,8 +143,13 @@ class Task34(Model):
     # REMINDER: EN is mandatory the others are extras
     def __init__(self, language: str):
         # load the specific model for the input language
+        self.language = language
+        #only for initialization
+        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
+        self.auto_model = torch.load("hw2/stud/saved/bert.pth")
+        #self.auto_model = torch.load("stud/saved/bert.pth")
+        self.auto_model.eval()
 
-        #vocabulary of encoutered type of embedding POS,PREDICATES MEANING
         with open('hw2/stud/saved/vocabulary.json') as json_file:
             data = json.load(json_file)
 
@@ -149,114 +157,57 @@ class Task34(Model):
         self.pos_list = data['pos_list']
         self.args_roles = data['args_roles']
         self.predicate_dis = data['predicate_dis']
-        self.language = language
-       
+
+
+
+        self.SRL = SRL("EN",self.tokenizer,"train",self.args_roles,self.pos_list,self.predicate_dis)
         
-        #only for initialization
-        path = "hw2/stud/saved"
-        path = os.path.join(path,self.language)
-        if self.language =="EN":      
-            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
-            self.SRL = SRL("EN",self.tokenizer,"train",self.args_roles,self.pos_list,self.predicate_dis)
-            self.cfg = self.load_configuration("EN")
-        else :
-            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
-            #EN or OTHER in SRL datast is not influencing the results.
-            self.SRL = SRL("EN",self.tokenizer,"train",self.args_roles,self.pos_list,self.predicate_dis)
-            self.cfg = self.load_configuration("OTHER")
-
-        path_bert = os.path.join(path,"bert.pth")
-        pat_arg = os.path.join(path,"model_arg.pth")
-
-        self.auto_model = torch.load(path_bert)
-        #self.auto_model = torch.load("stud/saved/bert.pth")
-        self.auto_model.eval()
 
 
-        self.model = Arg_Classifier(self.cfg)
-        #pat_arg = "stud/saved/model_2022_12_24_17_43_42.pth"
-        self.model.load_state_dict(torch.load(pat_arg,map_location=torch.device('cpu')))
+        #-----------------------------------------
+        embeddings = dict()
+
+        embeddings["predicate_flag_embedding_output_dim"] = 32
+        #defined in initial exploration of the dataset
+        embeddings["pos_embedding_input_dim"] = 0
+        embeddings["pos_embedding_output_dim"] = 100
+        #-------------------------------------------------
+        embeddings["predicate_embedding_input_dim"] = 0
+        embeddings["predicate_embedding_output_dim"] = False
+        #defined in initial exploration of the dataset
+        n_classes = 0
+
+
+
+        bilstm = dict()
+        bilstm["n_layers"] = 2
+        bilstm["output_dim"] = 50
+        dropouts = [0.4,0.3,0.3]
+
+        language_portable = True
+        predicate_meaning = True
+        pos = True
+
+        cfg = dict()
+        cfg["embeddings"] = embeddings
+        cfg["n_classes"] = n_classes
+        cfg["bilstm"] = bilstm
+        cfg["language_portable"] = language_portable
+        cfg["dropouts"] = dropouts
+        #-----------------------------------------
+        cfg["embeddings"]["pos_embedding_input_dim"] = len(self.SRL.pos_list)
+        cfg["embeddings"]["predicate_embedding_input_dim"] = len(self.SRL.predicate_dis)
+        cfg["n_classes"] = len(self.SRL.args_roles)
+        #-----------------------------------------
+
+
+
+        self.model = Arg_Classifier("EN",cfg)
+        PATH = "hw2/stud/saved/model_2022_12_24_17_43_42.pth"
+        #PATH = "stud/saved/model_2022_12_24_17_43_42.pth"
+        self.model.load_state_dict(torch.load(PATH,map_location=torch.device('cpu')))
         self.model.eval()
-    
-    def load_configuration(self,language):
 
-        if language == "EN":        
-            #CONFIGURATION
-            #-----------------------------------------
-            embeddings = dict()
-
-            embeddings["predicate_flag_embedding_output_dim"] = 32
-            #defined in initial exploration of the dataset
-            embeddings["pos_embedding_input_dim"] = 0
-            embeddings["pos_embedding_output_dim"] = 100
-            #-------------------------------------------------
-            embeddings["predicate_embedding_input_dim"] = 0
-            embeddings["predicate_embedding_output_dim"] = False
-            #defined in initial exploration of the dataset
-            n_classes = 0
-
-
-
-            bilstm = dict()
-            bilstm["n_layers"] = 2
-            bilstm["output_dim"] = 50
-            dropouts = [0.4,0.3,0.3]
-
-            language_portable = True
-            predicate_meaning = True
-            pos = True
-
-            cfg = dict()
-            cfg["embeddings"] = embeddings
-            cfg["n_classes"] = n_classes
-            cfg["bilstm"] = bilstm
-            cfg["language_portable"] = language_portable
-            cfg["dropouts"] = dropouts
-            #-----------------------------------------
-            cfg["embeddings"]["pos_embedding_input_dim"] = len(self.SRL.pos_list)
-            cfg["embeddings"]["predicate_embedding_input_dim"] = len(self.SRL.predicate_dis)
-            cfg["n_classes"] = len(self.SRL.args_roles)
-        
-        else :
-       
-            #CONFIGURATION
-            #-----------------------------------------
-            embeddings = dict()
-
-            embeddings["predicate_flag_embedding_output_dim"] = 32
-            #defined in initial exploration of the dataset
-            embeddings["pos_embedding_input_dim"] = 0
-            embeddings["pos_embedding_output_dim"] = 100
-            #-------------------------------------------------
-            embeddings["predicate_embedding_input_dim"] = 0
-            embeddings["predicate_embedding_output_dim"] = False
-            #defined in initial exploration of the dataset
-            n_classes = 0
-
-
-
-            bilstm = dict()
-            bilstm["n_layers"] = 2
-            bilstm["output_dim"] = 50
-            dropouts = [0.4,0.3,0.3]
-
-            language_portable = True
-            predicate_meaning = True
-            pos = True
-
-            cfg = dict()
-            cfg["embeddings"] = embeddings
-            cfg["n_classes"] = n_classes
-            cfg["bilstm"] = bilstm
-            cfg["language_portable"] = language_portable
-            cfg["dropouts"] = dropouts
-            #-----------------------------------------
-            cfg["embeddings"]["pos_embedding_input_dim"] = len(self.SRL.pos_list)
-            cfg["embeddings"]["predicate_embedding_input_dim"] = len(self.SRL.predicate_dis)
-            cfg["n_classes"] = len(self.SRL.args_roles)
-        
-        return cfg
-            
     def predict(self, sentence):
         """
         --> !!! STUDENT: implement here your predict function !!! <--
@@ -366,3 +317,13 @@ class Task34(Model):
 
 
         return output
+
+
+
+
+
+
+
+
+
+        
