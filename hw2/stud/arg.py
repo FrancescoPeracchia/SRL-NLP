@@ -188,6 +188,15 @@ class Arg_Classifier(torch.nn.Module):
     def set_language_constrains(self):
         self.flag_dropout = True
 
+    def freeze_parts(self):
+        # Freezing backbone and FPN
+        if self.language_portable and self.pos_embedding_output_dim:
+            print("Freezed layer : bi_lstm_portable and embedding ")
+            self.bi_lstm_portable.requires_grad_(False)
+            self.embedding_predicate_flag.requires_grad_(False)
+            self.embedding_predicate.requires_grad_(False)
+            self.embedding_pos.requires_grad_(False)
+
 
 
 class Arg_Classifier_from_paper(torch.nn.Module):
@@ -222,8 +231,6 @@ class Arg_Classifier_from_paper(torch.nn.Module):
         self.embedding_predicate_flag = torch.nn.Embedding(self.predicate_flag_embedding_input_dim, self.predicate_flag_embedding_output_dim, max_norm=True)
         self.bi_lstm = torch.nn.LSTM(768+10, self.bilstm_output_dim,self.bilstm_n_layers,batch_first=True, bidirectional = True)
         self.linear0 = torch.nn.Linear(300, self.output_classes)
-
-        
 
     def forward(self, subwords_embeddings :torch.tensor, perdicate_positional_encoding : torch.tensor, predicate_index:list, pos_index_encoding:torch.tensor, predicate_meaning_encoding:torch.tensor):
         
