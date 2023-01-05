@@ -153,19 +153,20 @@ class Task34(Model):
        
         
         #only for initialization
-        path = "hw2/stud/saved"
-        path = os.path.join(path,self.language)
+        path_or = "hw2/stud/saved"
+        path = os.path.join(path_or,self.language)
         if self.language =="EN":      
             self.tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
             self.SRL = SRL("EN",self.tokenizer,"train",self.args_roles,self.pos_list,self.predicate_dis)
             self.cfg = self.load_configuration("EN")
+            path_bert = os.path.join(path_or,"bert.pth")
         else :
             self.tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
             #EN or OTHER in SRL datast is not influencing the results.
             self.SRL = SRL("EN",self.tokenizer,"train",self.args_roles,self.pos_list,self.predicate_dis)
             self.cfg = self.load_configuration("OTHER")
+            path_bert = os.path.join(path_or,"bert_multilingual.pth")
 
-        path_bert = os.path.join(path,"bert.pth")
         pat_arg = os.path.join(path,"model_arg.pth")
 
         self.auto_model = torch.load(path_bert)
@@ -191,7 +192,7 @@ class Task34(Model):
             embeddings["pos_embedding_output_dim"] = 100
             #-------------------------------------------------
             embeddings["predicate_embedding_input_dim"] = 0
-            embeddings["predicate_embedding_output_dim"] = False
+            embeddings["predicate_embedding_output_dim"] = 50
             #defined in initial exploration of the dataset
             n_classes = 0
 
@@ -229,7 +230,7 @@ class Task34(Model):
             embeddings["pos_embedding_output_dim"] = 100
             #-------------------------------------------------
             embeddings["predicate_embedding_input_dim"] = 0
-            embeddings["predicate_embedding_output_dim"] = False
+            embeddings["predicate_embedding_output_dim"] = 50
             #defined in initial exploration of the dataset
             n_classes = 0
 
