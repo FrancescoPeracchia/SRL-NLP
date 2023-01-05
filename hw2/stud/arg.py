@@ -187,6 +187,12 @@ class Arg_Classifier(torch.nn.Module):
 
     def set_language_constrains(self):
         self.flag_dropout = True
+    
+    def freeze_parts(self):
+        # Freezing backbone and FPN
+        if self.language_portable and self.pos_embedding_output_dim:
+            self.bi_lstm_portable.backbone.requires_grad_(False)
+
 
     def freeze_parts(self):
         # Freezing backbone and FPN
